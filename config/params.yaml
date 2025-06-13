@@ -1,0 +1,46 @@
+costmap_ns:
+  costmap_tracking:
+    ros__parameters:
+      width: 700
+      height: 700
+      resolution: 0.05
+      max_obstacle_height: 2.5
+      gradient_size: 10
+      gradient_factor: 15
+      sensor_rotation_angle: 0.0
+      robot_radius: 0.2
+      process_noise_factor: 1.0
+      measurement_noise_factor: 0.05
+      robot_max_speed: 2.6
+
+global_path:
+  ros__parameters:
+    planner_algorithm: "rrt_star"
+
+local_path:
+  ros__parameters:
+    use_sim_time: true
+    max_v: 1.4
+    v_resolution: 0.05
+    max_omega: 1.0
+    omega_resolution: 0.01
+    dt: 2.0
+    boundary: 50.0
+    thresh_d: 0.25
+    thresh_a: 0.05
+
+    # DWA 가중치
+    weights: [
+      1.0,  # 방향 비용
+      0.4,  # 속도 비용
+      1.0,  # 장애물 거리 비용
+      2.0,  # Costmap 장애물 비용
+      0.0,  # 전역 경로 정렬 비용
+      0.0,  # 전역 경로 거리 비용
+      0.0,  # 목표 정렬 비용
+      2.0,  # 목표 거리 비용
+      0.0,  # MapGrid 장애물 비용
+      0.0,  # 목표지점 각도차 비용
+      0.0,  # Twirling 비용
+      0.0   # 진동 방지 비용
+    ]

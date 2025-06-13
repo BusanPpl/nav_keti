@@ -1,0 +1,13 @@
+{
+    "ros.distro": "foxy",
+    "python.autoComplete.extraPaths": [
+        "/home/ljs/robot_ws/install/urdf_keti/lib/python3.8/site-packages",
+        "/home/ljs/robot_ws/install/kpy/lib/python3.8/site-packages",
+        "/opt/ros/foxy/lib/python3.8/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/ljs/robot_ws/install/urdf_keti/lib/python3.8/site-packages",
+        "/home/ljs/robot_ws/install/kpy/lib/python3.8/site-packages",
+        "/opt/ros/foxy/lib/python3.8/site-packages"
+    ]
+}
