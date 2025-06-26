@@ -348,18 +348,22 @@ void CostmapGenerator::generateCostmap(const std::vector<int8_t>& data, int widt
     occupancy_grid_msg->info.origin.position.y = -height * resolution / 2.0;
     occupancy_grid_msg->info.origin.orientation.w = 1.0;
     occupancy_grid_msg->data = data;
-
+ 
     std::lock_guard<std::mutex> lock(costmap_mutex_);
 
     if (!obstacles.empty()) {
         auto vel = cmdVel();
         robot_yaw = getYaw(); 
-
+        RCLCPP_INFO(this->get_logger(), "Yaw : %.2f", robot_yaw);
         Updater -> getVel(vel.linear.x, vel.angular.z, robot_yaw);
         Operation -> getVel(vel.linear.x, vel.angular.z, robot_yaw);
 
         Updater -> ADIC(*occupancy_grid_msg, obstacles, 0.3);
         Operation -> update(*occupancy_grid_msg, objectes);
+    }
+    else {
+        std::vector<int8_t> free_data(width * height, cost::FREE_SPACE);
+        occupancy_grid_msg->data = free_data;
     }
 
     obstacles.clear();

@@ -33,6 +33,12 @@ def generate_launch_description():
         'path_planning.launch.py'
     )
 
+    ekf_launch = os.path.join(
+        get_package_share_directory('nav_keti'), 
+        'launch', 
+        'ekf.launch.py'
+    )
+
     return LaunchDescription([
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(sim_launch)
@@ -46,9 +52,9 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(multi_object_launch)
         ),
 
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(pathplanning_launch)
-        ),
+        # IncludeLaunchDescription(
+        #     PythonLaunchDescriptionSource(pathplanning_launch)
+        # ),
 
         Node(
             package='rviz2',

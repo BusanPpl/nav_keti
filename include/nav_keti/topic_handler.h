@@ -18,15 +18,20 @@
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 
+#include <GeographicLib/UTMUPS.hpp>
+#include <GeographicLib/MagneticModel.hpp>
+
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+
+#include <ctime>
 
 using json = nlohmann::json;
 
 class TopicHandler {
 public:
     explicit TopicHandler(rclcpp::Node* node)
-    : node_(node), qos_(10)
+    : node_(node), qos_(10), magnetic_model("wmm2025")
     {
         pub_path_ = node_->create_publisher<nav_msgs::msg::Path>("planned_path", qos_);
 
@@ -95,6 +100,7 @@ public:
     void setCmdvelCallback(std::function<void(geometry_msgs::msg::Twist::SharedPtr)> cb)         { vel_callback_ = cb; }
 
     //GPS 좌표계 상에서의 방향값을 반환
+    //읽기만 하니 const 함수로 설정
     double getYaw() const {
         tf2::Quaternion quat(
             imu_msg_.orientation.x,
@@ -102,19 +108,42 @@ public:
             imu_msg_.orientation.z,
             imu_msg_.orientation.w
         );
+
         double roll, pitch, yaw;
         tf2::Matrix3x3(quat).getRPY(roll, pitch, yaw);
-        yaw += 0.0;  // declination (편각) 필요 시 설정
-        if (yaw < 0) yaw += 2 * M_PI;
-        return yaw;
+
+        double Bx, By, Bz;
+        double lat = gps_msg_.latitude;
+        double lon = gps_msg_.longitude;
+        double alt = gps_msg_.altitude;
+        int yr = getCurrentYear();  
+
+        magnetic_model(yr, lat, lon, alt, Bx, By, Bz);
+
+        double H, F, D, I;
+        GeographicLib::MagneticModel::FieldComponents(Bx, By, Bz, H, F, D, I);
+
+        double decl_rad = D * M_PI / 180.0;
+
+        double corrected_yaw = yaw + decl_rad;
+        if (corrected_yaw < 0) corrected_yaw += 2*M_PI;
+        if (corrected_yaw >= 2*M_PI) corrected_yaw -= 2*M_PI;
+        return corrected_yaw;
     }
 
+    // void convertGPSToXY(double lat, double lon, double& x, double& y) const {
+    //     double lat_rad = lat * M_PI / 180.0;
+    //     double lon_rad = lon * M_PI / 180.0;
+    //     const double R = 6378137.0;
+    //     x = lon_rad * R * cos(lat_rad);
+    //     y = lat_rad * R;
+    // }
+
     void convertGPSToXY(double lat, double lon, double& x, double& y) const {
-        double lat_rad = lat * M_PI / 180.0;
-        double lon_rad = lon * M_PI / 180.0;
-        const double R = 6378137.0;
-        x = lon_rad * R * cos(lat_rad);
-        y = lat_rad * R;
+        using namespace GeographicLib;
+        int zone;
+        bool northp;
+        UTMUPS::Forward(lat, lon, zone, northp, x, y);
     }
 
     void publishCmd(const geometry_msgs::msg::Twist& vel) {
@@ -145,7 +174,7 @@ public:
     const geometry_msgs::msg::PoseStamped& goalPose() const { return goal_pose_msg_; }
     const sensor_msgs::msg::PointCloud2& pointCloud() const { return pointcloud_msg_; }
     const sensor_msgs::msg::LaserScan& laserScan() const    { return laser_scan_msg_; }
-    const geometry_msgs::msg::Twist& cmdVel() const    { return Vel_msg; }
+    const geometry_msgs::msg::Twist& cmdVel() const         { return Vel_msg; }
 
     bool gps_ready = false, laser_ready = false, costmap_ready = false, global_path_ready = false;
 
@@ -210,9 +239,10 @@ protected:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_;
 
 private:
-
     rclcpp::Node* node_;
     rclcpp::QoS qos_;
+
+    GeographicLib::MagneticModel magnetic_model;
 
     sensor_msgs::msg::NavSatFix gps_msg_;
     sensor_msgs::msg::NavSatFix target_gps_msg_;
@@ -246,6 +276,17 @@ private:
     std::function<void(sensor_msgs::msg::LaserScan::SharedPtr)> laserscan_callback_;
     std::function<void(std_msgs::msg::String::SharedPtr)> detect_callback_;
     std::function<void(geometry_msgs::msg::Twist::SharedPtr)> vel_callback_;
+
+    int getCurrentYear() const {
+        std::time_t now = std::time(nullptr);
+        std::tm* tm_struct = std::localtime(&now);
+
+        if (2023 < tm_struct->tm_year + 1900){
+            return tm_struct->tm_year + 1900;
+        } 
+        else return 2025;
+
+    }
 };
 
 #endif // TOPIC_HANDLER_H

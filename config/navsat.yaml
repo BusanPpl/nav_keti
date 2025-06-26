@@ -1,0 +1,21 @@
+navsat_transform_node:
+  ros__parameters:
+    # 일반 설정
+    use_odometry_yaw: false
+    magnetic_declination_radians: 0.0
+    yaw_offset: 0.0
+    zero_altitude: true
+    broadcast_cartesian_transform: true
+    publish_filtered_gps: true
+
+    # 필수 입력 토픽
+    gps0: /gps/fix      # ← sensor_cov.py가 퍼블리시
+    imu0: /imu/data_raw           # ← sensor_cov.py가 퍼블리시
+    odom0: /odometry/filtered      # ← EKF에서 퍼블리시
+
+    # 강제로 기준점 설정 (Gazebo에서 위경도 값이 이상할 경우 필요)
+    use_manual_datum: true
+    datum:
+      latitude: 37.0               # 적당한 위도 (서울 근처 기준)
+      longitude: 127.0             # 적당한 경도
+      altitude: 0.0

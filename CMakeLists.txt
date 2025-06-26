@@ -27,6 +27,7 @@ find_package(nav2_msgs REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(GeographicLib REQUIRED)
 
 pkg_check_modules(PROJ REQUIRED proj)
 
@@ -38,20 +39,23 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(include)
 
 add_executable(costmap_tracking src/costmap_generator.cpp src/obstacle_tracking.cpp src/dynamic_costmap_updater.cpp src/operation_costmap_updater.cpp)
-ament_target_dependencies(costmap_tracking rclcpp std_msgs nav_msgs sensor_msgs tf2_ros visualization_msgs nav2_msgs nlohmann_json OpenCV) 
+ament_target_dependencies(costmap_tracking rclcpp std_msgs nav_msgs sensor_msgs tf2_ros visualization_msgs nav2_msgs nlohmann_json OpenCV GeographicLib) 
 
 add_executable(global_path src/global_path_planner_node.cpp src/rrt_star_planner.cpp src/astar_planner.cpp)
-ament_target_dependencies(global_path rclcpp std_msgs nav_msgs sensor_msgs tf2_ros visualization_msgs nav2_msgs) 
+ament_target_dependencies(global_path rclcpp std_msgs nav_msgs sensor_msgs tf2_ros visualization_msgs nav2_msgs GeographicLib) 
 target_link_libraries(global_path ${PROJ_LIBRARIES})
 
 add_executable(local_path src/local_path_plan.cpp src/dwa.cpp)
-ament_target_dependencies(local_path rclcpp std_msgs nav_msgs sensor_msgs tf2_ros visualization_msgs nav2_msgs) 
+ament_target_dependencies(local_path rclcpp std_msgs nav_msgs sensor_msgs tf2_ros visualization_msgs nav2_msgs GeographicLib) 
 
+add_executable(yaw src/yaw_test.cpp)
+ament_target_dependencies(yaw rclcpp std_msgs nav_msgs sensor_msgs tf2_ros visualization_msgs nav2_msgs GeographicLib) 
 
 install(TARGETS
   costmap_tracking
   local_path
   global_path
+  yaw
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY include/

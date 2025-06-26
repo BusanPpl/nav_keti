@@ -5,8 +5,7 @@ using namespace rclcpp;
 using namespace std::placeholders;
 
 LocalPathPlanner::LocalPathPlanner()
-: Node("local_path"), TopicHandler(this), r(10)
-{
+: Node("local_path"), TopicHandler(this), r(10) {
     this->declare_parameter("max_v", 1.3);
     this->declare_parameter("v_resolution", 0.05);
     this->declare_parameter("max_omega", 1.0);
@@ -63,17 +62,22 @@ LocalPathPlanner::~LocalPathPlanner() {
 }
 
 void LocalPathPlanner::onGpsMsg(sensor_msgs::msg::NavSatFix::SharedPtr msg) {
-    convertGPSToXY(-msg->latitude, -msg->longitude, robot_x, robot_y);
-    RCLCPP_INFO(this->get_logger(), "robot_pose x: %.2f y: %.2f", robot_x, robot_y);
+    convertGPSToXY(msg->latitude, msg->longitude, robot_x, robot_y);
+    robot_x = - robot_x;
+    robot_y = - robot_y;
+    
+    //RCLCPP_INFO(this->get_logger(), "robot_pose x: %.2f y: %.2f", robot_x, robot_y);
     if (!gps_ready) {
         gps_ready = true;
-        convertGPSToXY(-msg->latitude, -msg->longitude + 0.0002, target_x, target_y);
-        RCLCPP_INFO(this->get_logger(), "goal_pose x: %.2f y: %.2f", target_x, target_y);
+        convertGPSToXY(msg->latitude, msg->longitude + 0.002, target_x, target_y);
+        target_x = - target_x;
+        target_y = - target_y;
+        //RCLCPP_INFO(this->get_logger(), "goal_pose x: %.2f y: %.2f", target_x, target_y);
     }
 }
 
 void LocalPathPlanner::onTargetGpsMsg(sensor_msgs::msg::NavSatFix::SharedPtr msg) {
-    convertGPSToXY(-msg->latitude, -msg->longitude, target_x, target_y);
+    convertGPSToXY(-msg->latitude, -msg->longitude, target_x, target_y); 
 }
 
 std::tuple<double, double> LocalPathPlanner::getDir() {
@@ -82,7 +86,7 @@ std::tuple<double, double> LocalPathPlanner::getDir() {
     double dy = target_y - robot_y; 
     double local_x = dx * cos(robot_yaw) + dy * cos(M_PI / 2 - robot_yaw); 
     double local_y = -dx * cos(M_PI / 2 - robot_yaw) + dy * cos(robot_yaw); 
-    if (std::isnan(local_x) || std::isnan(local_y)) return {0.0, 0.0};
+    if (std::isnan(local_x) || std::isnan(local_y)) return {0.0, 0.0}; 
     double local_theta = atan2(local_y, local_x); 
     double dist = sqrt(dx * dx + dy * dy); 
     return {dist, local_theta}; 
@@ -93,14 +97,15 @@ void LocalPathPlanner::laserCallback(const sensor_msgs::msg::LaserScan::SharedPt
         laser_ready = true;
         RCLCPP_INFO(this->get_logger(), "laser_ready");
     }
-
+    //장애물 없을때를 대비해야함
     detect = std::any_of(msg->ranges.begin(), msg->ranges.end(), [this](float r) {
         return std::isfinite(r) && r < boundary;
     });
-    if (detect) {
-        dwa->laserCallback(msg);
-        last_time = this->get_clock()->now();
-    }
+
+    detect = true;
+
+    dwa->laserCallback(msg);
+    last_time = this->get_clock()->now();
 }
 
 void LocalPathPlanner::costmapCallback(const nav2_msgs::msg::Costmap::SharedPtr msg) {
@@ -144,12 +149,12 @@ void LocalPathPlanner::LocalPathPlannerGoal() {
     }
 
     std::tie(dist, local_theta) = getDir();
+    //목적지로의 주행
     while (dist > thresh_dist) {
         if (!detect) {
             speed_.linear.x = 0;
             speed_.angular.z = checkAngularLimitVelocity(local_theta);
         } else {
-            
             dwa->updateGlobalPlan(globalPath().poses);
             dwa->costmapCallback(std::make_shared<nav2_msgs::msg::Costmap>(costmap()));
 
@@ -164,11 +169,12 @@ void LocalPathPlanner::LocalPathPlannerGoal() {
         }
 
         publishCmd(speed_);
-        RCLCPP_INFO(this->get_logger(), "Velocity vx: %.2f yaw: %.2f", speed_.linear.x, speed_.angular.z);
         std::tie(dist, local_theta) = getDir();
+        RCLCPP_INFO(this->get_logger(), "Velocity vx: %.2f yaw: %.2f, dist: %.2f", speed_.linear.x, speed_.angular.z, dist);
     }
 
     double dyaw = target_yaw - getYaw();
+    //목적지에서의 회전 정렬
     while (true) {
         if (std::fabs(std::sin(dyaw)) < 0.01 && std::fabs(std::cos(dyaw)) > std::cos(thresh_ang)) break;
         speed_.linear.x = 0;

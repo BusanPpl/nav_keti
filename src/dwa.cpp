@@ -61,7 +61,7 @@ vector<double> DWA::computeVelocityCommands(const RobotState& robot_state, const
         std::cerr << "[DWA] Costmap not ready yet!" << std::endl;
         return {0.0, 0.0};
     }
-    // 인덱스 기반 반복으로 정확한 탐색 영역 보장
+
     int omega_steps = static_cast<int>(round((2.0 * max_omega_) / omega_resolution_));
     int v_steps = static_cast<int>(round((2.0 * max_v_) / v_resolution_));
 
@@ -82,6 +82,7 @@ vector<double> DWA::computeVelocityCommands(const RobotState& robot_state, const
         std::cerr << "[DWA] No valid velocity samples generated or cost vector is empty!" << std::endl;
         return {0.0, 0.0};
     }
+
     // 두 번째 루프 (조건 기반 필터링 포함)
     for (int i = 0; i <= omega_steps; ++i) {
         double omega = -max_omega_ + i * omega_resolution_;
@@ -188,20 +189,23 @@ vector<double> DWA::computeCost(const RobotState& robot_state, const Goal& goal,
 
     double nearest_path_x = goal.x;
     double nearest_path_y = goal.y;
-    double lookahead_distance = max_v_ * dt_ * 1.1;
+    double lookahead_distance = max_v_ * dt_ * 1.3;
     double min_distance = numeric_limits<double>::max();
-    
+
+    double cos_theta = std::cos(-robot_state.theta);
+    double sin_theta = std::sin(-robot_state.theta);
+
     for (const auto& pose : global_plan_) {
-        double path_x = pose.pose.position.x;
-        double path_y = pose.pose.position.y;
+        double dx = pose.pose.position.x - robot_state.x;
+        double dy = pose.pose.position.y - robot_state.y;
 
-        double dx = path_x - robot_state.x;
-        double dy = path_y - robot_state.y;
-        double dist = hypot(dx, dy);
+        double local_x = cos_theta * dx - sin_theta * dy;
+        double local_y = sin_theta * dx + cos_theta * dy;
 
-        if (dist > lookahead_distance) {
-            nearest_path_x = path_x;
-            nearest_path_y = path_y;
+        if (local_x < 0.0) continue;
+        if (std::hypot(local_x, local_y) > lookahead_distance) {
+            nearest_path_x = pose.pose.position.x;
+            nearest_path_y = pose.pose.position.y;
             break;
         }
     }
@@ -213,8 +217,8 @@ vector<double> DWA::computeCost(const RobotState& robot_state, const Goal& goal,
     direction_cost=direction_cost / M_PI;
 
     // 속도 비용 계산
-    double speed_cost = (max_v_ - fabs(v)) / max_v_; 
-    
+    //double speed_cost = (max_v_ - fabs(v)) / max_v_; 
+    double speed_cost = (v >= 0.0) ? (max_v_ - v) / max_v_ : 1.0;
     // 장애물과의 거리 계산
     double min_distance_to_obstacle = numeric_limits<double>::max();
 
@@ -308,7 +312,6 @@ vector<double> DWA::computeCost(const RobotState& robot_state, const Goal& goal,
     double current_velocity_sign = (v > 0.0) ? 1.0 : -1.0;
     double oscillation_cost = (prev_velocity_sign != current_velocity_sign) ? 1.0 : 0.0;
     prev_velocity_sign = current_velocity_sign;
-
 
     cost.push_back(direction_cost); //
     cost.push_back(speed_cost);

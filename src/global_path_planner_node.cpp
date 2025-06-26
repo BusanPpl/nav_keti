@@ -33,11 +33,13 @@ private:
     nav2_msgs::msg::Costmap latest_costmap_;  
 
     void onGpsMsg(sensor_msgs::msg::NavSatFix::SharedPtr msg) {
-        convertGPSToXY(-msg->latitude, -msg->longitude, robot_x, robot_y);
+        convertGPSToXY(msg->latitude, msg->longitude, robot_x, robot_y);
+        RCLCPP_INFO(this->get_logger(), "gps location: %.2f = %.2f", -robot_x, -robot_y);
 
         if (!gps_ready_) {
             gps_ready_ = true;
-            convertGPSToXY(-msg->latitude, -msg->longitude + 0.0002, target_x, target_y);
+            convertGPSToXY(msg->latitude, msg->longitude + 0.0002, target_x, target_y);
+            RCLCPP_INFO(this->get_logger(), "target location: %.2f = %.2f", -target_x, -target_y);
         }
 
         if (map_ready_) {
@@ -47,6 +49,7 @@ private:
 
     void onTargetGpsMsg(sensor_msgs::msg::NavSatFix::SharedPtr msg) {
         convertGPSToXY(-msg->latitude, -msg->longitude, target_x, target_y);
+        
     }
 
     void onCostmapMsg(nav2_msgs::msg::Costmap::SharedPtr msg) {
@@ -68,6 +71,7 @@ private:
         }
 
         double yaw = getYaw();
+        RCLCPP_INFO(this->get_logger(), "Yaw : %.2f", yaw);
 
         double local_robot_x = ( - costmap.metadata.origin.position.x) / costmap.metadata.resolution;
         double local_robot_y = ( - costmap.metadata.origin.position.y) / costmap.metadata.resolution;

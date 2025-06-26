@@ -10,12 +10,12 @@ ekf_filter_node:
     world_frame: "map"
 
     # IMU 설정
-    imu0: "/imu"
+    imu0: "/imu/data_raw"
     imu0_config: [false, false, false,     # Position
-                  false,  false,  false,      # Orientation (Roll, Pitch, Yaw)
-                  false,  false,  false,     # Velocity (Vx, Vy)
-                  true, true, true,     # Angular velocity
-                  true, true, true]      # Acceleration (X, Y, Z)
+                  true,  true,  true,      # Orientation (Roll, Pitch, Yaw) 
+                  false, false, false,     # Velocity
+                  true,  true,  true,      # Angular velocity
+                  true,  true,  true]      # Acceleration
 
     imu0_differential: false
     imu0_remove_gravitational_acceleration: true
@@ -26,13 +26,13 @@ ekf_filter_node:
     imu0_twist_rejection_threshold: 0.8                
     imu0_linear_acceleration_rejection_threshold: 0.8
 
-    # GPS 설정
-    gps0: "/gps"
-    gps0_config: [true,  true,  false,     # Position (x, y only)
+    # GPS 설정 (navsat_transform_node 출력으로 바꿔야 함)
+    gps0: "/gps/fix"  
+    gps0_config: [true,  true,  false,     # Position (x, y)
                   false, false, false,     # Orientation
-                  true, true, false,     # Velocity
+                  true,  true,  false,     # Velocity (x, y)
                   false, false, false,     # Angular velocity
                   false, false, false]     # Acceleration
 
     gps0_differential: false
-    gps0_relative_position: true
+    gps0_relative_position: false  

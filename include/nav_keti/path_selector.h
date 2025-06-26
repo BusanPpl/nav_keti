@@ -48,6 +48,7 @@ public:
         if (planner_core_) return planner_core_->plan();
         return {};
     }
+    
     std::vector<Vec2i> smoothPath(const std::vector<Vec2i>& path, int max_iter) {
         if (planner_core_) return planner_core_->smoothPath(path, max_iter);
         return path;
